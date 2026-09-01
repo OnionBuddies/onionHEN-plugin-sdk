@@ -26,10 +26,10 @@ versioned C ABI, host services, lifecycle callbacks, events, and a replaceable
 IPC transport. The SDK is designed to evolve without exposing OnionHEN daemon
 internals or a C++ ABI to plugin authors.
 
-> This repository is the SDK side of the integration. OnionHEN host-side
-> discovery, plugin management, and ShellUI/WebUI backends are separate work.
-> The current OnionHEN host loads bare `.elf` payloads through its private
-> loader; the SDK's `.opk` file is only a distribution format for now.
+> This repository is the SDK side of the integration. OnionHEN has the host UI
+> registry, cooperative daemon plugin socket, ShellUI XML adapter, and plugin
+> manager. A plugin is a standard little-endian ELF containing the
+> `.onion_plugin` descriptor; no ZIP container or manifest file is required.
 
 ## Features
 
@@ -40,8 +40,12 @@ internals or a C++ ABI to plugin authors.
 - Typed configuration helpers for strings, integers, and booleans
 - Thread-safe event bus with safe unsubscribe during callbacks
 - Fixed-width IPC frames with request IDs and status responses
+- Connection-scoped `HELLO` with immutable plugin ID and capability declaration
 - Replaceable transport interface for sockets, mocks, or future transports
-- Python tools to package, inspect, and deploy plugin artifacts
+- Versioned `onion.ui` service with page, menu, group, label, action, toggle,
+  list, list-item, and input contributions
+- Validated little-endian UI documents and chunked IPC registration
+- Python tools to inspect and atomically deploy plugin ELF artifacts
 - Minimal `hello` and daemon samples
 
 ## Requirements
@@ -72,11 +76,12 @@ cmake -S . -B build-ps5 -G Ninja \
   -DCMAKE_TOOLCHAIN_FILE=cmake/ps5-toolchain.cmake \
   -DONION_SDK_BUILD_SAMPLES=ON \
   -DPS5_PAYLOAD_SDK="$PS5_PAYLOAD_SDK"
-cmake --build build-ps5 --target hello_package
+cmake --build build-ps5 --target hello
 ```
 
-The ELF is written to `build-ps5/bin/hello.elf`. The optional package is written
-to `build-ps5/packages/hello.opk`.
+The plugin ELF is written to `build-ps5/bin/hello.elf`. Deploy it with
+`tools/deploy_plugin.py`; the host installs it as
+`/data/OnionHEN/plugins/<plugin_id>.elf` after validating its descriptor.
 
 ## Create a plugin
 
@@ -98,6 +103,55 @@ entry point is still an ordinary PS5 payload entry point. Keep all data crossing
 the host boundary in the public C headers; pointers, STL objects, exceptions,
 and C++ class layouts are not part of the ABI.
 
+## UI contributions
+
+An IPC-backed client opens its connection session once, before querying optional
+services. The descriptor ID is self-declared: the host binds it to that
+connection and rejects duplicate active IDs, but does not cryptographically
+authenticate the plugin.
+
+```c
+onion_socket_transport_connect(&transport, &socket_state,
+                               ONION_PLUGIN_IPC_SOCKET_PATH);
+onion_client_init(&client, &transport);
+onion_client_open_session(&client, &onion_plugin_descriptor);
+onion_client_make_services(&client, &host_services);
+```
+
+Include `<onion/ui.h>` and build an opaque `onion_ui_document`. Add the root
+page before its children, validate the document, then register it through the
+Host Services object received by the plugin. A contribution with the same
+`plugin_id` and `contribution_id` replaces the previous document atomically and
+keeps its handle.
+
+```c
+onion_ui_document_desc_v1 document_desc = {
+    .struct_size = sizeof(document_desc),
+    .abi_version = ONION_UI_ABI_VERSION,
+    .plugin_id = "MYPL00001",
+    .contribution_id = "settings",
+    .title = "My plugin",
+    .root_page_id = "main",
+};
+onion_ui_document *document = NULL;
+onion_ui_document_create(&document_desc, &document);
+
+onion_ui_node_desc_v1 page = {
+    .struct_size = sizeof(page),
+    .abi_version = ONION_UI_ABI_VERSION,
+    .kind = ONION_UI_NODE_PAGE,
+    .id = "main",
+    .title = "Settings",
+};
+onion_ui_document_add_node(document, &page);
+onion_ui_register(host_services, document, &handle);
+```
+
+The UI document is limited to 256 KiB, 256 nodes, and a nesting depth of 8.
+Plugin IDs and node IDs are stable identifiers, not display strings. Unregister
+contributions during normal shutdown; the host also removes all contributions
+owned by a disconnected plugin session.
+
 ## Architecture
 
 ```text
@@ -112,15 +166,19 @@ state transitions, ABI rules, and extension guidance.
 
 ## Current scope and roadmap
 
-The current release focuses on the plugin-side foundation. The next host-facing
-layers are planned in this order:
+The current release includes the plugin-side UI contribution contract and the
+OnionHEN registry/XML adapter. Remaining host-facing layers are planned in this
+order:
 
-1. OnionHEN plugin manager and manifest validation
-2. Host IPC broker and capability enforcement
-3. Plugin status, auto-start, stop/restart, and crash recovery
-4. UI Contribution API with a WebUI backend
-5. ShellUI XML backend with firmware-specific adapters
-6. Optional etaHEN `.plugin` compatibility tooling
+1. Remaining daemon Host Service handlers for log, notify, and configuration
+2. Plugin status, auto-start, stop/restart, and crash recovery
+3. Cross-process UI snapshot publication and action-event delivery
+4. Optional WebUI contribution backend
+5. Optional etaHEN `.plugin` compatibility tooling
+
+The current daemon plugin socket serves `HELLO`, `PING`, and UI commands 10–15.
+Other Host Service commands return `ONION_E_NOT_SUPPORTED` until their daemon
+handlers are added.
 
 ## Contributing
 

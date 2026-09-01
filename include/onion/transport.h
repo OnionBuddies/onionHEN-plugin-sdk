@@ -38,9 +38,12 @@ typedef struct onion_socket_transport {
 onion_status onion_socket_transport_init(onion_transport *transport,
                                          onion_socket_transport *state,
                                          int fd, bool owns_fd);
+/* Connect to a Unix stream socket and transfer ownership to the transport. */
+onion_status onion_socket_transport_connect(onion_transport *transport,
+                                            onion_socket_transport *state,
+                                            const char *path);
 void onion_socket_transport_deinit(onion_transport *transport);
 
 #ifdef __cplusplus
 }
 #endif
-

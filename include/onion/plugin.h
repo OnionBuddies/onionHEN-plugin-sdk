@@ -17,7 +17,8 @@ enum onion_plugin_capability {
     ONION_PLUGIN_CAP_IPC = 1u << 1,
     ONION_PLUGIN_CAP_PROCESS = 1u << 2,
     ONION_PLUGIN_CAP_INJECT = 1u << 3,
-    ONION_PLUGIN_CAP_KERNEL = 1u << 4
+    ONION_PLUGIN_CAP_KERNEL = 1u << 4,
+    ONION_PLUGIN_CAP_UI = 1u << 5
 };
 
 enum onion_plugin_flags {

@@ -28,7 +28,7 @@ cmake -S . -B build-ps5 -G Ninja \
 cmake --build build-ps5
 ```
 
-Do not commit `build/`, `build-ps5/`, generated packages, Python bytecode, PS5
+Do not commit `build/`, `build-ps5/`, generated artifacts, Python bytecode, PS5
 SDK files, proprietary libraries, decrypted system files, keys, or console
 dumps.
 
@@ -86,4 +86,3 @@ native structures directly.
 
 Maintainers may ask for a smaller change, additional tests, or an ABI proposal
 before accepting a new public API.
-

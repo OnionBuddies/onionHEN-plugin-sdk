@@ -24,7 +24,8 @@ enum onion_system_event {
     ONION_EVENT_REST_MODE = 0x104,
     ONION_EVENT_RESUME = 0x105,
     ONION_EVENT_LANGUAGE_CHANGED = 0x106,
-    ONION_EVENT_HOST_DISCONNECTING = 0x107
+    ONION_EVENT_HOST_DISCONNECTING = 0x107,
+    ONION_EVENT_UI_ACTION = 0x108
 };
 
 onion_status onion_event_bus_create(onion_event_bus **out_bus);

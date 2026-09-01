@@ -25,9 +25,9 @@ OnionHEN Plugin SDK 为独立运行的 PS5 ELF 插件提供基础协议和运行
 和可替换 IPC 传输与宿主通信。SDK 不暴露 OnionHEN daemon 内部实现，也不依赖
 C++ ABI，方便后续演进和测试。
 
-> 本仓库实现的是插件侧 SDK。OnionHEN 宿主侧的插件扫描、管理以及
-> ShellUI/WebUI 后端属于独立工作。当前 OnionHEN 宿主通过私有 loader 加载
-> 裸 `.elf`；SDK 的 `.opk` 目前只是分发格式。
+> 本仓库实现的是插件侧 SDK。OnionHEN 已具备宿主 UI registry、ShellUI XML
+> adapter、协作式 daemon 插件 socket 和插件管理器。插件是包含
+> `.onion_plugin` 描述符的标准 little-endian ELF，不需要 ZIP 容器或 manifest。
 
 ## 功能
 
@@ -38,8 +38,12 @@ C++ ABI，方便后续演进和测试。
 - 字符串、整数、布尔配置辅助函数
 - 支持回调中安全取消订阅的线程安全事件总线
 - 带 request ID 和状态响应的固定宽度 IPC frame
+- 连接级 `HELLO`，绑定不可变 plugin ID 并声明 capability
 - 可替换 transport，支持 socket、mock 以及未来实现
-- 插件打包、检查和部署 Python 工具
+- 版本化 `onion.ui` service，支持页面、菜单、分组、标签、按钮、开关、列表、
+  列表项和输入框 contribution
+- 带完整校验的 little-endian UI document 与分块 IPC 注册
+- 插件检查和原子部署 Python 工具
 - `hello` 与 daemon 最小示例
 
 ## 依赖
@@ -70,11 +74,12 @@ cmake -S . -B build-ps5 -G Ninja \
   -DCMAKE_TOOLCHAIN_FILE=cmake/ps5-toolchain.cmake \
   -DONION_SDK_BUILD_SAMPLES=ON \
   -DPS5_PAYLOAD_SDK="$PS5_PAYLOAD_SDK"
-cmake --build build-ps5 --target hello_package
+cmake --build build-ps5 --target hello
 ```
 
-ELF 输出到 `build-ps5/bin/hello.elf`，可选的 `.opk` 输出到
-`build-ps5/packages/hello.opk`。
+插件 ELF 输出到 `build-ps5/bin/hello.elf`。使用
+`tools/deploy_plugin.py` 部署后，host 会在校验 descriptor 后安装为
+`/data/OnionHEN/plugins/<plugin_id>.elf`。
 
 ## 创建插件
 
@@ -95,6 +100,51 @@ onion_add_plugin(
 PS5 Payload 入口。跨宿主边界的数据必须使用公共 C 头文件定义；指针、STL
 对象、异常和 C++ 类布局都不属于稳定 ABI。
 
+## UI Contribution
+
+使用 IPC client 时，应在查询可选服务前为连接建立一次会话。descriptor ID
+由插件自行声明；宿主会将它绑定到当前连接并拒绝重复的活跃 ID，但不会对插件
+进行密码学认证。
+
+```c
+onion_socket_transport_connect(&transport, &socket_state,
+                               ONION_PLUGIN_IPC_SOCKET_PATH);
+onion_client_init(&client, &transport);
+onion_client_open_session(&client, &onion_plugin_descriptor);
+onion_client_make_services(&client, &host_services);
+```
+
+包含 `<onion/ui.h>` 并创建 opaque `onion_ui_document`。先加入根页面，再加入
+子节点；校验完成后，通过插件收到的 Host Services 注册。相同 `plugin_id` 与
+`contribution_id` 的新文档会原子替换旧文档，并保持原有 handle。
+
+```c
+onion_ui_document_desc_v1 document_desc = {
+    .struct_size = sizeof(document_desc),
+    .abi_version = ONION_UI_ABI_VERSION,
+    .plugin_id = "MYPL00001",
+    .contribution_id = "settings",
+    .title = "My plugin",
+    .root_page_id = "main",
+};
+onion_ui_document *document = NULL;
+onion_ui_document_create(&document_desc, &document);
+
+onion_ui_node_desc_v1 page = {
+    .struct_size = sizeof(page),
+    .abi_version = ONION_UI_ABI_VERSION,
+    .kind = ONION_UI_NODE_PAGE,
+    .id = "main",
+    .title = "Settings",
+};
+onion_ui_document_add_node(document, &page);
+onion_ui_register(host_services, document, &handle);
+```
+
+UI document 上限为 256 KiB、256 个节点和 8 层嵌套。插件 ID 与节点 ID 是
+稳定标识，不是显示文本。插件正常停止时应主动 unregister；连接异常断开时，
+宿主也会清理该会话拥有的全部 contribution。
+
 ## 架构
 
 ```text
@@ -109,14 +159,18 @@ PS5 Payload 入口。跨宿主边界的数据必须使用公共 C 头文件定�
 
 ## 当前范围与路线图
 
-当前版本专注于插件侧基础能力，后续宿主层按以下顺序实现：
+当前版本已包含插件侧 UI Contribution contract，以及 OnionHEN registry/XML
+adapter。剩余宿主层按以下顺序实现：
 
-1. OnionHEN 插件管理器和 manifest 校验
-2. Host IPC broker 与 capability 强制检查
-3. 插件状态、自动启动、停止/重启和崩溃恢复
-4. 带 WebUI backend 的 UI Contribution API
-5. 带固件适配器的 ShellUI XML backend
-6. 可选的 etaHEN `.plugin` 兼容工具
+1. 日志、通知与配置等剩余 daemon Host Service handler
+2. 插件状态、自动启动、停止/重启和崩溃恢复
+3. 跨进程 UI snapshot 发布与动作事件投递
+4. 可选的 WebUI contribution backend
+5. 可选的 etaHEN `.plugin` 兼容工具
+
+当前 daemon 插件 socket 已处理 `HELLO`、`PING` 和 10–15 号 UI 命令。日志、
+通知、配置等其它 Host Service 命令在 daemon handler 完成前返回
+`ONION_E_NOT_SUPPORTED`。
 
 ## 参与贡献
 
