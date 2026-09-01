@@ -1,0 +1,9 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security vulnerability
+    url: https://github.com/aydencharles/onionHEN-plugin-sdk/security/advisories/new
+    about: Report vulnerabilities privately; do not open a public issue.
+  - name: OnionHEN host issues
+    url: https://github.com/aydencharles/onionHEN/issues
+    about: Report host, Toolbox, loader, and console runtime problems in OnionHEN.
+

@@ -1,0 +1,55 @@
+name: Feature request
+description: Propose a focused SDK API, Runtime, tool, or documentation improvement
+title: "[Feature] "
+labels: ["enhancement"]
+body:
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Core ABI
+        - Lifecycle
+        - Host service
+        - Event / transport
+        - CMake / tooling
+        - UI contribution protocol
+        - Documentation / samples
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: Describe the developer problem, not only the desired method name.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed API or behavior
+      description: Include ownership, expected callers, and a small usage example where possible.
+    validations:
+      required: true
+  - type: textarea
+    id: compatibility
+    attributes:
+      label: Compatibility impact
+      description: Explain ABI, wire protocol, capability, firmware, or migration implications.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checks
+      options:
+        - label: I read the architecture and contribution documents.
+          required: true
+        - label: I searched existing issues and pull requests.
+          required: true
+

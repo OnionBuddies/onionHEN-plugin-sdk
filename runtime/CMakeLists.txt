@@ -1,0 +1,13 @@
+add_library(onion_sdk_runtime STATIC
+    host_api.c
+    status.c
+    transport.c
+    services.c
+    runtime.c
+    event_bus.c
+    client.c)
+add_library(OnionHEN::Runtime ALIAS onion_sdk_runtime)
+set_target_properties(onion_sdk_runtime PROPERTIES EXPORT_NAME Runtime)
+target_link_libraries(onion_sdk_runtime PUBLIC OnionHEN::SDK)
+target_link_libraries(onion_sdk_runtime PRIVATE Threads::Threads)
+target_compile_features(onion_sdk_runtime PRIVATE c_std_11)

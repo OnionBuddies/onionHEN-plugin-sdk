@@ -1,0 +1,78 @@
+name: Bug report
+description: Report a reproducible SDK, Runtime, tool, or build failure
+title: "[Bug] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Do not include proprietary SDK files, credentials, console identifiers,
+        or decrypted system binaries. Security-sensitive reports belong in the
+        repository Security tab.
+  - type: dropdown
+    id: component
+    attributes:
+      label: Component
+      options:
+        - Public C API / ABI
+        - Runtime lifecycle
+        - Host services / IPC client
+        - Event bus
+        - Transport
+        - CMake / PS5 toolchain
+        - Python tools
+        - Samples
+        - Documentation
+        - Other
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: SDK version or commit
+      placeholder: v0.1.0 or commit SHA
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Build environment
+      description: OS, compiler, CMake, Python, and PS5 Payload SDK version if relevant
+      placeholder: macOS 15, AppleClang 16, CMake 3.30, Python 3.12
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: What happened, and what did you expect instead?
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Reproduction steps
+      placeholder: |
+        1. Configure with ...
+        2. Build target ...
+        3. Call API ...
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant output
+      description: Paste the smallest useful compiler, CMake, test, or runtime output
+      render: shell
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checks
+      options:
+        - label: I reproduced this with the latest default branch.
+          required: true
+        - label: I searched existing issues for the same problem.
+          required: true
+        - label: This report contains no secrets or proprietary files.
+          required: true
+

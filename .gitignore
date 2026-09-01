@@ -1,0 +1,10 @@
+build/
+build-*/
+out/
+dist/
+__pycache__/
+*.pyc
+*.opk
+.DS_Store
+.idea/
+.vscode/
