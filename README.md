@@ -47,7 +47,7 @@ internals or a C++ ABI to plugin authors.
 - Validated little-endian UI documents and chunked IPC registration
 - Owner-scoped UI action polling with strict event decoding
 - Python tools to inspect and atomically deploy plugin ELF artifacts
-- Minimal `hello` and daemon samples
+- Minimal `hello`, daemon, and dynamic UI smoke-test samples
 
 ## Requirements
 
@@ -83,6 +83,19 @@ cmake --build build-ps5 --target hello
 The plugin ELF is written to `build-ps5/bin/hello.elf`. Deploy it with
 `tools/deploy_plugin.py`; the host installs it as
 `/data/OnionHEN/plugins/<plugin_id>.elf` after validating its descriptor.
+
+For the end-to-end dynamic UI check, build and deploy the auto-start smoke-test
+plugin:
+
+```sh
+cmake --build build-ps5 --target dynamic_ui
+python3 tools/deploy_plugin.py build-ps5/bin/dynamic_ui.elf
+```
+
+It installs as `/data/OnionHEN/plugins/ONIO00003.elf`. After OnionHEN starts or
+reconciles plugins, open the `Dynamic UI Smoke Test` page and exercise its
+toggle, list, numeric input, and confirmed action. The plugin appends registration,
+action, and shutdown records to `/data/OnionHEN/dynamic_ui_smoke.log`.
 
 ## Create a plugin
 

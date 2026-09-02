@@ -85,8 +85,8 @@ The production socket is `/system_tmp/onionhen/ipc/plugin_service`.
 creates one `ConnectionSession` per accepted stream. Listener recovery closes
 active streams so plugins reconnect with a fresh identity after rest mode.
 The endpoint handles `HELLO`, `PING`, event polling command 9, and UI commands
-10–15; the
-remaining Host Service commands are reserved for their daemon handlers.
+10–15; the remaining Host Service commands are reserved for their daemon
+handlers.
 
 UI action delivery uses `ONION_EVENT_UI_ACTION` and `onion_ui_event_v1`. The SDK
 exposes `onion_client_poll_ui_event()` as an explicit non-blocking poll on the

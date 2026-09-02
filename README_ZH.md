@@ -45,7 +45,7 @@ C++ ABI，方便后续演进和测试。
 - 带完整校验的 little-endian UI document 与分块 IPC 注册
 - 按 owner 隔离的 UI 动作轮询与严格事件解码
 - 插件检查和原子部署 Python 工具
-- `hello` 与 daemon 最小示例
+- `hello`、daemon 与动态 UI smoke test 示例
 
 ## 依赖
 
@@ -81,6 +81,18 @@ cmake --build build-ps5 --target hello
 插件 ELF 输出到 `build-ps5/bin/hello.elf`。使用
 `tools/deploy_plugin.py` 部署后，host 会在校验 descriptor 后安装为
 `/data/OnionHEN/plugins/<plugin_id>.elf`。
+
+端到端验证动态 UI 时，构建并部署带自动启动标志的 smoke test 插件：
+
+```sh
+cmake --build build-ps5 --target dynamic_ui
+python3 tools/deploy_plugin.py build-ps5/bin/dynamic_ui.elf
+```
+
+它会安装为 `/data/OnionHEN/plugins/ONIO00003.elf`。OnionHEN 启动或重新
+reconcile 插件后，打开 `Dynamic UI Smoke Test` 页面，依次操作开关、列表、
+数字输入框和带确认的动作按钮。注册、动作和退出记录会追加到
+`/data/OnionHEN/dynamic_ui_smoke.log`。
 
 ## 创建插件
 

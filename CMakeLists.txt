@@ -39,6 +39,7 @@ endif()
 if(ONION_SDK_BUILD_SAMPLES)
     add_subdirectory(samples/hello)
     add_subdirectory(samples/daemon)
+    add_subdirectory(samples/dynamic_ui)
 endif()
 
 include(GNUInstallDirs)
