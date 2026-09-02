@@ -30,6 +30,7 @@ onion_plugin_runtime  ---- onion_host_services_v1
 | `runtime/client.c` | IPC-backed Host Services adapter | Yes |
 | `runtime/ui.c` | UI document builder, validation, and encoder | Yes |
 | `runtime/ui_client.c` | Chunked UI registration client | Yes |
+| `runtime/ui_event.c` | Strict UI action event decoder and polling API | Yes |
 | `runtime/host_api.c` | Legacy fd convenience wrappers | Compatibility |
 
 Plugin code should depend on interfaces (`onion_host_services_v1`,
@@ -83,12 +84,17 @@ The production socket is `/system_tmp/onionhen/ipc/plugin_service`.
 `onion_socket_transport_connect()` owns the connected descriptor and the daemon
 creates one `ConnectionSession` per accepted stream. Listener recovery closes
 active streams so plugins reconnect with a fresh identity after rest mode.
-The endpoint currently handles `HELLO`, `PING`, and UI commands 10–15; the
+The endpoint handles `HELLO`, `PING`, event polling command 9, and UI commands
+10–15; the
 remaining Host Service commands are reserved for their daemon handlers.
 
 UI action delivery uses `ONION_EVENT_UI_ACTION` and `onion_ui_event_v1`. The SDK
-defines this event contract, but a concrete connection/event pump belongs to the
-OnionHEN plugin manager.
+exposes `onion_client_poll_ui_event()` as an explicit non-blocking poll on the
+same request/response connection. `ONION_E_NOT_FOUND` means that the owning
+plugin currently has no queued action. The daemon derives owner, contribution,
+page, and node metadata from its registry; none of these fields are trusted from
+ShellUI. Snapshot publication and ShellUI actions use a separate daemon stream
+so asynchronous UI traffic cannot be mistaken for plugin IPC responses.
 
 ## Lifecycle
 
@@ -105,9 +111,9 @@ moves the runtime to `FAILED` and returns the callback's error code.
 
 This release implements the SDK-side contracts and client runtime. OnionHEN now
 has the host registry, protocol dispatcher, cooperative connection-session
-core, daemon plugin socket, ShellUI XML adapter, and an ELF plugin manager.
+core, daemon plugin socket, cross-process ShellUI bridge, XML adapter, owner
+event queues, and an ELF plugin manager.
 Plugins are discovered as standard `.elf` files under
 `/data/OnionHEN/plugins/`; their `.onion_plugin` descriptor is validated before
-the private loader starts an auto-start instance. Remaining Host Service
-handlers, cross-process snapshot publication, and action-event delivery remain
-future host work.
+the private loader starts an auto-start instance. Remaining log, notification,
+and configuration Host Service handlers remain future host work.

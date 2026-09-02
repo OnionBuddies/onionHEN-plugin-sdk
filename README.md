@@ -45,6 +45,7 @@ internals or a C++ ABI to plugin authors.
 - Versioned `onion.ui` service with page, menu, group, label, action, toggle,
   list, list-item, and input contributions
 - Validated little-endian UI documents and chunked IPC registration
+- Owner-scoped UI action polling with strict event decoding
 - Python tools to inspect and atomically deploy plugin ELF artifacts
 - Minimal `hello` and daemon samples
 
@@ -147,6 +148,17 @@ onion_ui_document_add_node(document, &page);
 onion_ui_register(host_services, document, &handle);
 ```
 
+Poll actions from the plugin's normal event loop. One call consumes at most one
+event; an empty queue returns `ONION_E_NOT_FOUND` immediately.
+
+```c
+onion_ui_event_v1 event;
+if (onion_client_poll_ui_event(&client, &event) == ONION_OK) {
+    onion_event_publish(event_bus, ONION_EVENT_UI_ACTION,
+                        &event, sizeof(event));
+}
+```
+
 The UI document is limited to 256 KiB, 256 nodes, and a nesting depth of 8.
 Plugin IDs and node IDs are stable identifiers, not display strings. Unregister
 contributions during normal shutdown; the host also removes all contributions
@@ -166,17 +178,18 @@ state transitions, ABI rules, and extension guidance.
 
 ## Current scope and roadmap
 
-The current release includes the plugin-side UI contribution contract and the
-OnionHEN registry/XML adapter. Remaining host-facing layers are planned in this
-order:
+The current release includes the plugin-side UI contribution contract, the
+OnionHEN registry/XML adapter, cross-process snapshot publication, and owner-
+scoped action delivery. Remaining host-facing layers are planned in this order:
 
 1. Remaining daemon Host Service handlers for log, notify, and configuration
 2. Plugin status, auto-start, stop/restart, and crash recovery
-3. Cross-process UI snapshot publication and action-event delivery
-4. Optional WebUI contribution backend
-5. Optional etaHEN `.plugin` compatibility tooling
+3. Optional WebUI contribution backend
+4. Optional etaHEN `.plugin` compatibility tooling
 
-The current daemon plugin socket serves `HELLO`, `PING`, and UI commands 10–15.
+The current daemon plugin socket serves `HELLO`, `PING`, event poll command 9,
+and UI commands 10–15. `onion_client_poll_ui_event()` returns one validated
+`onion_ui_event_v1`, or `ONION_E_NOT_FOUND` when the queue is empty.
 Other Host Service commands return `ONION_E_NOT_SUPPORTED` until their daemon
 handlers are added.
 

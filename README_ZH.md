@@ -43,6 +43,7 @@ C++ ABI，方便后续演进和测试。
 - 版本化 `onion.ui` service，支持页面、菜单、分组、标签、按钮、开关、列表、
   列表项和输入框 contribution
 - 带完整校验的 little-endian UI document 与分块 IPC 注册
+- 按 owner 隔离的 UI 动作轮询与严格事件解码
 - 插件检查和原子部署 Python 工具
 - `hello` 与 daemon 最小示例
 
@@ -141,6 +142,17 @@ onion_ui_document_add_node(document, &page);
 onion_ui_register(host_services, document, &handle);
 ```
 
+在插件自己的事件循环中轮询动作。每次调用最多消费一个事件；队列为空时会立即
+返回 `ONION_E_NOT_FOUND`。
+
+```c
+onion_ui_event_v1 event;
+if (onion_client_poll_ui_event(&client, &event) == ONION_OK) {
+    onion_event_publish(event_bus, ONION_EVENT_UI_ACTION,
+                        &event, sizeof(event));
+}
+```
+
 UI document 上限为 256 KiB、256 个节点和 8 层嵌套。插件 ID 与节点 ID 是
 稳定标识，不是显示文本。插件正常停止时应主动 unregister；连接异常断开时，
 宿主也会清理该会话拥有的全部 contribution。
@@ -159,17 +171,18 @@ UI document 上限为 256 KiB、256 个节点和 8 层嵌套。插件 ID 与节�
 
 ## 当前范围与路线图
 
-当前版本已包含插件侧 UI Contribution contract，以及 OnionHEN registry/XML
-adapter。剩余宿主层按以下顺序实现：
+当前版本已包含插件侧 UI Contribution contract、OnionHEN registry/XML adapter、
+跨进程 snapshot 发布和按 owner 隔离的动作投递。剩余宿主层按以下顺序实现：
 
 1. 日志、通知与配置等剩余 daemon Host Service handler
 2. 插件状态、自动启动、停止/重启和崩溃恢复
-3. 跨进程 UI snapshot 发布与动作事件投递
-4. 可选的 WebUI contribution backend
-5. 可选的 etaHEN `.plugin` 兼容工具
+3. 可选的 WebUI contribution backend
+4. 可选的 etaHEN `.plugin` 兼容工具
 
-当前 daemon 插件 socket 已处理 `HELLO`、`PING` 和 10–15 号 UI 命令。日志、
-通知、配置等其它 Host Service 命令在 daemon handler 完成前返回
+当前 daemon 插件 socket 已处理 `HELLO`、`PING`、9 号事件轮询和 10–15 号 UI
+命令。`onion_client_poll_ui_event()` 每次返回一个校验后的
+`onion_ui_event_v1`，队列为空时返回 `ONION_E_NOT_FOUND`。日志、通知、配置等
+其它 Host Service 命令在 daemon handler 完成前返回
 `ONION_E_NOT_SUPPORTED`。
 
 ## 参与贡献

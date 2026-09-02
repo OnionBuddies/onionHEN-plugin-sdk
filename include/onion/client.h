@@ -6,6 +6,7 @@
 #include "onion/plugin.h"
 #include "onion/services.h"
 #include "onion/transport.h"
+#include "onion/ui.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -30,6 +31,9 @@ void onion_client_deinit(onion_client *client);
 onion_status onion_client_make_services(onion_client *client,
                                         onion_host_services_v1 *out_services);
 onion_status onion_client_ping(onion_client *client);
+/* Non-blocking poll; returns ONION_E_NOT_FOUND when no UI action is queued. */
+onion_status onion_client_poll_ui_event(onion_client *client,
+                                        onion_ui_event_v1 *out_event);
 
 #ifdef __cplusplus
 }

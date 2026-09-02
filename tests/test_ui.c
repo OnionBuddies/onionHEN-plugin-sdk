@@ -1,6 +1,7 @@
 #include "onion/ui.h"
 #include "onion/ui_protocol.h"
 #include "onion/client.h"
+#include "onion/event_bus.h"
 #include "onion/ipc.h"
 #include "onion/transport.h"
 
@@ -23,6 +24,7 @@ typedef struct mock_transport_state {
     unsigned chunks;
     unsigned hellos;
     int hello_valid;
+    int event_mode;
 } mock_transport_state;
 
 static int check(int condition, const char *message) {
@@ -46,8 +48,38 @@ static void write_u32(unsigned char *bytes, uint32_t value) {
     bytes[3] = (unsigned char)(value >> 24);
 }
 
+static void write_u16(unsigned char *bytes, uint16_t value) {
+    bytes[0] = (unsigned char)value;
+    bytes[1] = (unsigned char)(value >> 8);
+}
+
 static void write_u64(unsigned char *bytes, uint64_t value) {
     for (unsigned i = 0; i < 8; ++i) bytes[i] = (unsigned char)(value >> (i * 8));
+}
+
+static size_t write_ui_event(unsigned char *bytes) {
+    static const char contribution[] = "settings";
+    static const char page[] = "main";
+    static const char node_id[] = "mode";
+    static const char value[] = "fast";
+    write_u32(bytes, ONION_EVENT_UI_ACTION);
+    write_u32(bytes + 4, ONION_UI_ABI_VERSION);
+    write_u64(bytes + 8, 7);
+    write_u64(bytes + 16, 99);
+    write_u32(bytes + 24, ONION_UI_VALUE_STRING);
+    write_u16(bytes + 28, (uint16_t)(sizeof(contribution) - 1));
+    write_u16(bytes + 30, (uint16_t)(sizeof(page) - 1));
+    write_u16(bytes + 32, (uint16_t)(sizeof(node_id) - 1));
+    write_u16(bytes + 34, (uint16_t)(sizeof(value) - 1));
+    size_t offset = ONION_PLUGIN_IPC_UI_EVENT_HEADER_SIZE;
+    memcpy(bytes + offset, contribution, sizeof(contribution) - 1);
+    offset += sizeof(contribution) - 1;
+    memcpy(bytes + offset, page, sizeof(page) - 1);
+    offset += sizeof(page) - 1;
+    memcpy(bytes + offset, node_id, sizeof(node_id) - 1);
+    offset += sizeof(node_id) - 1;
+    memcpy(bytes + offset, value, sizeof(value) - 1);
+    return offset + sizeof(value) - 1;
 }
 
 static onion_status transport_send(void *context, const void *data, size_t size) {
@@ -81,7 +113,19 @@ static onion_status transport_recv(void *context, void *data, size_t size) {
     response->command = ONION_PLUGIN_IPC_RESPONSE;
     response->request_id = state->request.request_id;
     write_u32(response->payload, 0);
-    if (state->request.command == ONION_PLUGIN_IPC_UI_REGISTER_BEGIN) {
+    if (state->request.command == ONION_PLUGIN_IPC_EVENT) {
+        if (state->event_mode == 1) {
+            write_u32(response->payload, (uint32_t)ONION_E_NOT_FOUND);
+            write_u32(response->payload + 4, 0);
+            response->payload_size = 8;
+        } else {
+            const size_t event_size = write_ui_event(response->payload + 8);
+            if (state->event_mode == 2)
+                response->payload[8] = 0;
+            write_u32(response->payload + 4, (uint32_t)event_size);
+            response->payload_size = (uint32_t)(8 + event_size);
+        }
+    } else if (state->request.command == ONION_PLUGIN_IPC_UI_REGISTER_BEGIN) {
         write_u32(response->payload + 4, 4);
         write_u32(response->payload + 8, 7);
         response->payload_size = 12;
@@ -335,6 +379,26 @@ int main(void) {
                                   ONION_UI_VALUE_BOOL, "false") == ONION_OK &&
                onion_ui_unregister(&client_services, client_handle) == ONION_OK,
                "IPC-backed UI update and unregister")) return 1;
+    onion_ui_event_v1 ui_event;
+    memset(&ui_event, 0xa5, sizeof(ui_event));
+    if (!check(onion_client_poll_ui_event(&client, &ui_event) == ONION_OK &&
+               ui_event.struct_size == sizeof(ui_event) &&
+               ui_event.abi_version == ONION_UI_ABI_VERSION &&
+               ui_event.sequence == 7 && ui_event.handle == 99 &&
+               ui_event.value_type == ONION_UI_VALUE_STRING &&
+               strcmp(ui_event.contribution_id, "settings") == 0 &&
+               strcmp(ui_event.page_id, "main") == 0 &&
+               strcmp(ui_event.node_id, "mode") == 0 &&
+               strcmp(ui_event.value, "fast") == 0,
+               "decode UI action event")) return 1;
+    transport_state.event_mode = 1;
+    if (!check(onion_client_poll_ui_event(&client, &ui_event) ==
+                   ONION_E_NOT_FOUND,
+               "empty UI event queue")) return 1;
+    transport_state.event_mode = 2;
+    if (!check(onion_client_poll_ui_event(&client, &ui_event) ==
+                   ONION_E_PROTOCOL,
+               "reject malformed UI action event")) return 1;
     onion_client_deinit(&client);
 
     onion_ui_document_destroy(document);

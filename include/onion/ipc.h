@@ -28,6 +28,7 @@ enum onion_plugin_ipc_command {
 
 /* HELLO payload: plugin ABI, capabilities, ID length, reserved, then ID bytes. */
 #define ONION_PLUGIN_IPC_HELLO_HEADER_SIZE 12u
+#define ONION_PLUGIN_IPC_UI_EVENT_HEADER_SIZE 36u
 
 typedef struct onion_plugin_ipc_response {
     int32_t status;
