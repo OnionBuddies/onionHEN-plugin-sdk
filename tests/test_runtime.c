@@ -60,7 +60,7 @@ static int check(int condition, const char *message) {
 int main(void) {
     onion_host_services_v1 services = {
         sizeof(services), ONION_HOST_SERVICES_ABI_VERSION, NULL,
-        mock_log, mock_notify, mock_get, mock_set
+        mock_log, mock_notify, mock_get, mock_set, NULL
     };
     static const onion_plugin_descriptor_v1 descriptor = {
         sizeof(descriptor), ONION_PLUGIN_ABI_VERSION, ONION_PLUGIN_CAP_NOTIFY, 0,
@@ -100,4 +100,3 @@ int main(void) {
     puts("sdk_runtime_test: PASS");
     return 0;
 }
-

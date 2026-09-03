@@ -32,7 +32,9 @@ onion_status onion_plugin_runtime_init(
     runtime->abi_version = ONION_PLUGIN_ABI_VERSION;
     runtime->descriptor = descriptor;
     runtime->callbacks = *callbacks;
-    runtime->services = *services;
+    size_t services_size = services->struct_size;
+    if (services_size > sizeof(runtime->services)) services_size = sizeof(runtime->services);
+    memcpy(&runtime->services, services, services_size);
     runtime->state = ONION_PLUGIN_STATE_INITIALIZED;
     if (runtime->callbacks.on_init) {
         onion_status callback_result = runtime->callbacks.on_init(runtime->callbacks.context, services);

@@ -34,7 +34,11 @@ function(onion_add_plugin)
                 "onion_add_plugin(${OP_NAME}): set PS5_PAYLOAD_SDK to a ps5-payload-sdk checkout")
         endif()
     endif()
-    if(NOT EXISTS "${PS5_PAYLOAD_SDK}/include")
+    if(EXISTS "${PS5_PAYLOAD_SDK}/include")
+        set(_payload_include "${PS5_PAYLOAD_SDK}/include")
+    elseif(EXISTS "${PS5_PAYLOAD_SDK}/target/include")
+        set(_payload_include "${PS5_PAYLOAD_SDK}/target/include")
+    else()
         message(FATAL_ERROR "PS5_PAYLOAD_SDK has no include directory: ${PS5_PAYLOAD_SDK}")
     endif()
 
@@ -54,7 +58,7 @@ function(onion_add_plugin)
         ${OP_COMPILE_OPTIONS})
     target_include_directories(${OP_NAME} PRIVATE
         "${PS5_PAYLOAD_SDK}"
-        "${PS5_PAYLOAD_SDK}/include"
+        "${_payload_include}"
         "${OP_INCLUDE_DIRS}")
     if(EXISTS "${PS5_PAYLOAD_SDK}/target/lib")
         target_link_directories(${OP_NAME} PRIVATE "${PS5_PAYLOAD_SDK}/target/lib")
@@ -67,25 +71,19 @@ function(onion_add_plugin)
     find_program(_objcopy NAMES llvm-objcopy prospero-objcopy)
     if(_objcopy)
         add_custom_command(TARGET ${OP_NAME} POST_BUILD
-            COMMAND "${_objcopy}" --strip-unneeded "$<TARGET_FILE:${OP_NAME}>"
+            COMMAND "${_objcopy}" --strip-unneeded
+                --keep-section=.onion_plugin "$<TARGET_FILE:${OP_NAME}>"
             COMMENT "Stripping ${OP_NAME}.elf")
     endif()
 
-    set(_package_dir "${CMAKE_BINARY_DIR}/packages")
-    set(_package "${_package_dir}/${OP_NAME}.opk")
-    add_custom_command(OUTPUT "${_package}"
-        COMMAND "${CMAKE_COMMAND}" -E make_directory "${_package_dir}"
-        COMMAND "${Python3_EXECUTABLE}" "${_sdk_tools}/pack_plugin.py"
+    add_custom_command(TARGET ${OP_NAME} POST_BUILD
+        COMMAND "${Python3_EXECUTABLE}" "${_sdk_tools}/inspect_plugin.py"
             "$<TARGET_FILE:${OP_NAME}>"
-            --id "${OP_TITLE_ID}"
-            --version "${OP_VERSION}"
-            --output "${_package}"
-        DEPENDS ${OP_NAME} "${_sdk_tools}/pack_plugin.py"
-        COMMENT "Packaging ${OP_NAME}.opk"
+            --expect-id "${OP_TITLE_ID}"
+            --expect-version "${OP_VERSION}"
+            --quiet
+        COMMENT "Validating ${OP_NAME}.elf plugin descriptor"
         VERBATIM)
-    add_custom_target(${OP_NAME}_package DEPENDS "${_package}")
-    add_dependencies(${OP_NAME}_package ${OP_NAME})
 
     set(${OP_NAME}_ELF "$<TARGET_FILE:${OP_NAME}>" PARENT_SCOPE)
-    set(${OP_NAME}_PACKAGE "${_package}" PARENT_SCOPE)
 endfunction()

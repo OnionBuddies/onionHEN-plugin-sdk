@@ -26,21 +26,26 @@ if(ONION_SDK_BUILD_TESTS)
     target_compile_features(sdk_runtime_test PRIVATE c_std_11)
     target_compile_options(sdk_runtime_test PRIVATE -Wall -Wextra -Werror)
     add_test(NAME sdk_runtime COMMAND sdk_runtime_test)
+    add_executable(sdk_ui_test tests/test_ui.c)
+    target_link_libraries(sdk_ui_test PRIVATE OnionHEN::Runtime Threads::Threads)
+    target_compile_features(sdk_ui_test PRIVATE c_std_11)
+    target_compile_options(sdk_ui_test PRIVATE -Wall -Wextra -Werror)
+    add_test(NAME sdk_ui COMMAND sdk_ui_test)
     add_test(NAME sdk_python_tools
         COMMAND ${Python3_EXECUTABLE} -c
-            "import importlib.util; s=importlib.util.spec_from_file_location('t','${CMAKE_CURRENT_SOURCE_DIR}/tests/test_tools.py'); m=importlib.util.module_from_spec(s); s.loader.exec_module(m); m.test_pack_and_inspect()")
+            "import importlib.util; s=importlib.util.spec_from_file_location('t','${CMAKE_CURRENT_SOURCE_DIR}/tests/test_tools.py'); m=importlib.util.module_from_spec(s); s.loader.exec_module(m); m.test_inspect_and_deploy()")
 endif()
 
 if(ONION_SDK_BUILD_SAMPLES)
     add_subdirectory(samples/hello)
     add_subdirectory(samples/daemon)
+    add_subdirectory(samples/dynamic_ui)
 endif()
 
 include(GNUInstallDirs)
 install(DIRECTORY include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 install(FILES cmake/OnionPlugin.cmake DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/OnionHENPluginSDK)
 install(PROGRAMS
-    tools/pack_plugin.py
     tools/inspect_plugin.py
     tools/deploy_plugin.py
     DESTINATION ${CMAKE_INSTALL_BINDIR})

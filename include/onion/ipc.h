@@ -5,6 +5,7 @@
 #define ONION_PLUGIN_IPC_MAGIC 0x4F504943u /* 'OPIC' */
 #define ONION_PLUGIN_IPC_VERSION 1u
 #define ONION_PLUGIN_IPC_MAX_PAYLOAD 4096u
+#define ONION_PLUGIN_IPC_SOCKET_PATH "/system_tmp/onionhen/ipc/plugin_service"
 
 enum onion_plugin_ipc_command {
     ONION_PLUGIN_IPC_PING = 1,
@@ -15,8 +16,19 @@ enum onion_plugin_ipc_command {
     ONION_PLUGIN_IPC_CONFIG_SET = 6,
     ONION_PLUGIN_IPC_GET_STATUS = 7,
     ONION_PLUGIN_IPC_STOP = 8,
-    ONION_PLUGIN_IPC_EVENT = 9
+    ONION_PLUGIN_IPC_EVENT = 9,
+    ONION_PLUGIN_IPC_UI_REGISTER_BEGIN = 10,
+    ONION_PLUGIN_IPC_UI_REGISTER_CHUNK = 11,
+    ONION_PLUGIN_IPC_UI_REGISTER_COMMIT = 12,
+    ONION_PLUGIN_IPC_UI_REGISTER_ABORT = 13,
+    ONION_PLUGIN_IPC_UI_UNREGISTER = 14,
+    ONION_PLUGIN_IPC_UI_SET_VALUE = 15,
+    ONION_PLUGIN_IPC_HELLO = 16
 };
+
+/* HELLO payload: plugin ABI, capabilities, ID length, reserved, then ID bytes. */
+#define ONION_PLUGIN_IPC_HELLO_HEADER_SIZE 12u
+#define ONION_PLUGIN_IPC_UI_EVENT_HEADER_SIZE 36u
 
 typedef struct onion_plugin_ipc_response {
     int32_t status;

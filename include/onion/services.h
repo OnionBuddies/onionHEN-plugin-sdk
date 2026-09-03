@@ -24,6 +24,9 @@ typedef onion_status (*onion_service_config_get_fn)(void *context,
 typedef onion_status (*onion_service_config_set_fn)(void *context,
                                                     const char *key,
                                                     const char *value);
+typedef onion_status (*onion_service_query_interface_fn)(
+    void *context, const char *name, uint32_t min_version,
+    void *out_interface, size_t interface_size);
 
 typedef struct onion_host_services_v1 {
     uint32_t struct_size;
@@ -33,6 +36,8 @@ typedef struct onion_host_services_v1 {
     onion_service_notify_fn notify;
     onion_service_config_get_fn config_get;
     onion_service_config_set_fn config_set;
+    /* Optional tail extension. Check struct_size before reading this field. */
+    onion_service_query_interface_fn query_interface;
 } onion_host_services_v1;
 
 onion_status onion_services_validate(const onion_host_services_v1 *services);
@@ -53,6 +58,9 @@ onion_status onion_service_config_get_bool(const onion_host_services_v1 *service
                                            const char *key, int *value);
 onion_status onion_service_config_set_bool(const onion_host_services_v1 *services,
                                            const char *key, int value);
+onion_status onion_service_query_interface(
+    const onion_host_services_v1 *services, const char *name,
+    uint32_t min_version, void *out_interface, size_t interface_size);
 
 #ifdef __cplusplus
 }

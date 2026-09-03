@@ -16,6 +16,9 @@ same minor release.
 - Lifecycle Runtime, Host Services, typed configuration, and status model
 - Thread-safe event bus
 - Replaceable transport and IPC client adapter
-- Packaging, inspection, and deployment tools
+- Cooperative connection `HELLO` with immutable plugin ID and capabilities
+- Owned Unix socket connector for the default OnionHEN plugin endpoint
+- Versioned UI contribution model, validation, encoder, and chunked IPC client
+- `onion.ui` optional Host Service and UI action event contract
+- ELF plugin inspection and atomic deployment tools
 - Host-side tests, samples, architecture documentation, and repository policies
-

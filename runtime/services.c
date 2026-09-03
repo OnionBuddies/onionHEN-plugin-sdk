@@ -1,11 +1,13 @@
 #include "onion/services.h"
 
 #include <stdio.h>
+#include <stddef.h>
 #include <stdlib.h>
 #include <string.h>
 
 onion_status onion_services_validate(const onion_host_services_v1 *services) {
-    if (!services || services->struct_size < sizeof(*services) ||
+    const size_t required_size = offsetof(onion_host_services_v1, query_interface);
+    if (!services || services->struct_size < required_size ||
         services->abi_version != ONION_HOST_SERVICES_ABI_VERSION) {
         return ONION_E_PROTOCOL;
     }
@@ -83,4 +85,18 @@ onion_status onion_service_config_get_bool(const onion_host_services_v1 *service
 onion_status onion_service_config_set_bool(const onion_host_services_v1 *services,
                                            const char *key, int value) {
     return onion_service_config_set(services, key, value ? "true" : "false");
+}
+
+onion_status onion_service_query_interface(
+    const onion_host_services_v1 *services, const char *name,
+    uint32_t min_version, void *out_interface, size_t interface_size) {
+    const size_t required_size = offsetof(onion_host_services_v1, query_interface) +
+                                 sizeof(services->query_interface);
+    if (onion_services_validate(services) != ONION_OK || !name || !out_interface ||
+        interface_size == 0 || services->struct_size < required_size ||
+        !services->query_interface) {
+        return ONION_E_NOT_SUPPORTED;
+    }
+    return services->query_interface(services->context, name, min_version,
+                                     out_interface, interface_size);
 }

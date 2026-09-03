@@ -5,7 +5,10 @@ add_library(onion_sdk_runtime STATIC
     services.c
     runtime.c
     event_bus.c
-    client.c)
+    client.c
+    ui.c
+    ui_client.c
+    ui_event.c)
 add_library(OnionHEN::Runtime ALIAS onion_sdk_runtime)
 set_target_properties(onion_sdk_runtime PROPERTIES EXPORT_NAME Runtime)
 target_link_libraries(onion_sdk_runtime PUBLIC OnionHEN::SDK)

@@ -1,8 +1,12 @@
 #!/usr/bin/env python3
-"""Copy a plugin ELF or package to an OnionHEN plugin directory."""
+"""Validate and atomically install an OnionHEN plugin ELF."""
 import argparse
+import os
 import shutil
+import tempfile
 from pathlib import Path
+
+from inspect_plugin import inspect_elf
 
 
 def main() -> int:
@@ -12,13 +16,39 @@ def main() -> int:
     args = parser.parse_args()
     if not args.plugin.is_file():
         parser.error(f"plugin does not exist: {args.plugin}")
+    try:
+        descriptor = inspect_elf(args.plugin)
+    except (OSError, ValueError) as error:
+        parser.error(str(error))
+
     args.root.mkdir(parents=True, exist_ok=True)
-    destination = args.root / args.plugin.name
-    shutil.copy2(args.plugin, destination)
+    destination = args.root / f"{descriptor['id']}.elf"
+    try:
+        if args.plugin.resolve() == destination.resolve():
+            print(destination)
+            return 0
+    except OSError:
+        pass
+
+    temporary_path = None
+    try:
+        with tempfile.NamedTemporaryFile(
+                mode="wb", dir=args.root, prefix=f".{descriptor['id']}.",
+                suffix=".installing", delete=False) as temporary:
+            temporary_path = Path(temporary.name)
+            with args.plugin.open("rb") as source:
+                shutil.copyfileobj(source, temporary)
+            temporary.flush()
+            os.fsync(temporary.fileno())
+        os.chmod(temporary_path, 0o755)
+        os.replace(temporary_path, destination)
+        temporary_path = None
+    finally:
+        if temporary_path is not None:
+            temporary_path.unlink(missing_ok=True)
     print(destination)
     return 0
 
 
 if __name__ == "__main__":
     raise SystemExit(main())
-
